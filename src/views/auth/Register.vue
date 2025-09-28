@@ -1,12 +1,9 @@
 <script lang="ts" setup>
 import { reactive } from 'vue';
-import instance from '../../lib/axios';
+import { useAuthStore } from '../../store/auth';
+import type { RegisterForm } from '../../types/type';
 
-interface RegisterForm {
-  name: String;
-  email: String;
-  password: String;
-}
+const { register } = useAuthStore();
 
 const form = reactive<RegisterForm>({
   name: '',
@@ -14,38 +11,46 @@ const form = reactive<RegisterForm>({
   password: '',
 })
 
-const register = async (payload: RegisterForm) => {
-  await instance.get('/sanctum/csrf-cookie');
-  try {
-    const response = await instance.post('/api/register', payload);
-
-    console.log(response.data)
-  } catch (error) {
-    
-    console.error(error);
-  }
+const handleRegister = async (payload: RegisterForm) => {
+  await register(payload);
 }
 </script>
 
 
 <template>
-  <h1 class="text-slate-200 mb-6">Register page</h1>
-  <div class="mb-6 felx">
-    <form class="bg-white dark:bg-slate-800 shadow-md rounded-lg p-6 w-md" @submit.prevent="register(form)">
-        <div class="mb-6">
-            <label for="name" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Name</label>
-            <input type="text" v-model="form.name" id="name" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder="John" required />
+  <div class="flex flex-col lg:flex-row justify-center items-center w-full gap-8 mt-10">
+    <img src="/public/logo.jpg" alt="" width="500" height="500">
+    <div
+      class="w-full max-w-sm p-4 bg-white border border-gray-200 rounded-lg shadow-sm sm:p-6 md:p-8 dark:bg-gray-800 dark:border-gray-700">
+      <form class="space-y-6" @submit.prevent="handleRegister(form)">
+        <h5 class="text-xl font-medium text-gray-900 dark:text-white">Sign in to our platform</h5>
+        <div>
+          <label for="name" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Your name</label>
+          <input v-model="form.name" type="text" name="name" id="name"
+            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white"
+            placeholder="your name" required />
         </div>
-        <div class="mb-6">
-            <label for="email" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Email address</label>
-            <input type="email" v-model="form.email" id="email" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder="john.doe@company.com" required />
-        </div> 
-        <div class="mb-6">
-            <label for="password" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Password</label>
-            <input type="password" v-model="form.password" id="password" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder="•••••••••" required />
-        </div> 
-        <button type="submit" class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Submit</button>
-    </form>
+        <div>
+          <label for="email" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Your email</label>
+          <input v-model="form.email" type="email" name="email" id="email"
+            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white"
+            placeholder="name@company.com" required />
+        </div>
+        <div>
+          <label for="password" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Your password</label>
+          <input v-model="form.password" type="password" name="password" id="password" placeholder="••••••••"
+            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white"
+            required />
+        </div>
+        <button type="submit"
+          class="w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Sign in
+          to your account</button>
+        <div class="text-sm font-medium text-gray-500 dark:text-gray-300">
+          Have registered? <RouterLink to="/auth/login" class="text-blue-700 hover:underline dark:text-blue-500">Sign in
+            account</RouterLink>
+        </div>
+      </form>
+    </div>
   </div>
 </template>
 
