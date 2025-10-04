@@ -8,6 +8,9 @@ import Auth from "./layouts/auth.vue";
 import { useAuthStore } from "./store/auth";
 import Dashboard from "./views/member/Dashboard.vue";
 import Member from "./layouts/member.vue";
+import Category from "./views/admin/category.vue";
+import Product from "./views/admin/product.vue";
+import Order from "./views/admin/order.vue";
 
 
 const routes = [
@@ -61,7 +64,34 @@ const routes = [
           requiresAuth: true,
           title: 'Admin Dashboard'
         }
-      }
+      },
+      {
+        path: 'category',
+        component: Category,
+        name: 'admin.category',
+        meta: {
+          requiresAuth: true,
+          title: 'Admin Category'
+        }
+      },
+      {
+        path: 'product',
+        component: Product,
+        name: 'admin.product',
+        meta: {
+          requiresAuth: true,
+          title: 'Admin Product'
+        }
+      },
+      {
+        path: 'order',
+        component: Order,
+        name: 'admin.order',
+        meta: {
+          requiresAuth: true,
+          title: 'Admin order'
+        }
+      },
     ]
   }
 ]
@@ -77,19 +107,24 @@ router.beforeEach(async (to, from, next) => {
   if (to.meta.requiresAuth && !isAuthenticated) {
     if (authStore.token) {
       try {
-        if (!authStore.user) {
-          next({name: 'auth.login'});
+        await authStore.getMe();
+        if (authStore.user) {
+          if(authStore.user.role==='admin'){
+            next({name: 'admin.dashboard'});
+          }else{
+            next({name: 'member.dashboard'});
+          }
         }
-
         next();
       } catch (error) {
         next({name: 'auth.login'});
+        throw error;
       }
     } else {
       next({name: 'auth.login'});
     }
   } else if (to.meta.requiresUnauth && authStore.token) {
-    next({name: 'dashboard'});
+    next({name: 'member.dashboard'});
   } else {
     next();
   }

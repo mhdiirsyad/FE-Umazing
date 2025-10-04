@@ -88,11 +88,15 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async getMe() {
+      this.loading = true
       try {
         const res = await instance.get('/api/me');
-        this.user = res.data.data.user;
+        this.user = res.data.data;
+        console.log(this.user);
       } catch (error) {
         console.log(error);
+      } finally {
+        this.loading = false;
       }
     }
   }

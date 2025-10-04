@@ -1,6 +1,6 @@
 <template>
   <div>
-    <h1 class="text-xl uppercase font-bold my-2">Manage Products</h1>
+    <h1 class="text-xl uppercase font-bold my-2">Manage Orders</h1>
     <div class="flex flex-col-reverse gap-2 items-start lg:justify-between lg:flex-row py-4">
       <input type="text">
       <!-- Modal toggle -->

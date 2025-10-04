@@ -4,3 +4,9 @@
 @plugin "flowbite/plugin";
 @source "../node_modules/flowbite";
 @source "../node_modules/flowbite-datepicker";
+
+
+html {
+  padding: 0;
+  margin: 0;
+}

@@ -9,4 +9,8 @@ interface RegisterForm {
   password: String;
 }
 
-export type { LoginForm, RegisterForm };
+interface CategoryForm {
+  name: string | undefined;
+}
+
+export type { LoginForm, RegisterForm, CategoryForm };

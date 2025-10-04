@@ -2,7 +2,7 @@
   <Topbar />
   <SideBar />
   
-  <main class="ml-64 p-4 min-h-screen">
+  <main class="py-15 px-8 sm:ml-64 min-h-screen">
     <RouterView />    
   </main>
 </template>
