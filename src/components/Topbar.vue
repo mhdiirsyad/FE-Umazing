@@ -55,7 +55,7 @@ import { useAuthStore } from '../store/auth';
 import { storeToRefs } from 'pinia';
 
 const { logout } = useAuthStore();
-const { user, loading } = storeToRefs(useAuthStore());
+const { user } = storeToRefs(useAuthStore());
 
 const handleLogout = async () => {
   await logout();

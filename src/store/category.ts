@@ -1,6 +1,5 @@
 import { defineStore } from "pinia";
 import instance from "../lib/axios";
-import router from "../router";
 import Cookies from "js-cookie";
 
 
