@@ -2,12 +2,14 @@ import axios from "axios";
 import Cookies from "js-cookie";
 
 const token = Cookies.get('auth_token');
+const baseURL = import.meta.env.VITE_BACKEND_URL
+
+console.log(baseURL)
 
 const instance = axios.create({
-  baseURL: 'http://localhost:8000',
+  baseURL: baseURL,
   withCredentials: true,
   headers: {
-    "Content-Type": "application/json",
     "Accept": "application/json",
     "Authorization": `Bearer ${token}`
   },

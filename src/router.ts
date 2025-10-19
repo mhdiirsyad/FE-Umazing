@@ -1,60 +1,114 @@
 import { createRouter, createWebHistory } from "vue-router";
-import HomeView from "./components/HomeView.vue";
+import AuthLayout from "./layouts/AuthLayout.vue";
 import Register from "./views/auth/Register.vue";
 import Login from "./views/auth/Login.vue";
-import Admin from "./layouts/admin.vue";
-import AdminDashboard from "./views/admin/dashboard.vue";
-import Auth from "./layouts/auth.vue";
+import AdminLayout from "./layouts/AdminLayout.vue";
+import AdminDashboard from "./views/admin/AdminDashboard.vue";
+import AdminCategory from "./views/admin/AdminCategory.vue";
+import AdminProduct from "./views/admin/AdminProduct.vue";
+import AdminOrder from "./views/admin/AdminOrder.vue";
+import AdminOrderDetail from "./views/admin/AdminOrderDetail.vue";
+import MemberLayout from "./layouts/MemberLayout.vue";
+import MemberOrder from "./views/member/MemberOrder.vue";
+import MemberOrderDetail from "./views/member/MemberOrderDetail.vue";
+import MemberDashboard from "./views/member/MemberDashboard.vue";
+import MemberProductDetail from "./views/member/MemberProductDetail.vue";
+import MemberCart from "./views/member/MemberCart.vue";
+import HomePage from "./views/Guest/HomePage.vue";
+import ProductDetail from "./views/Guest/ProductDetail.vue";
 import { useAuthStore } from "./store/auth";
-import Dashboard from "./views/member/Dashboard.vue";
-import Member from "./layouts/member.vue";
-import Category from "./views/admin/category.vue";
-import Product from "./views/admin/product.vue";
-import Order from "./views/admin/order.vue";
 
 
 const routes = [
   {
     path: '/',
-    component: () => HomeView,
-    name: 'home'
+    component: HomePage,
+    name: 'home',
+    meta: {requiresUnauth: true},
+  },
+  {
+    path: '/product/:id',
+    component: ProductDetail,
+    name: 'product.detail',
+    meta: {requiresUnauth: true},
   },
   {
     path: '/auth',
-    component: Auth,
+    component: AuthLayout,
     children: [
       {
         path: 'login',
         component: Login,
         name: 'auth.login',
-        meta: { title: 'Login' }
+        meta: { title: 'Login', requiresUnauth: true }
       },
       {
         path: 'register',
         component: Register,
         name: 'auth.register',
-        meta: { title: 'Register' }
+        meta: { title: 'Register', requiresUnauth: true }
       }
     ]
   },
   {
     path: '/member',
-    component: Member,
+    component: MemberLayout,
     children: [
       {
         path: 'dashboard',
-        component: Dashboard,
+        component: MemberDashboard,
         name: 'member.dashboard',
         meta: {
           requiresAuth: true,
-          title: 'Member Dashboard'
+          title: 'Member Dashboard',
+          roles: ['user'],
         }
-      }
+      },
+      {
+        path: 'product/:id',
+        component: MemberProductDetail,
+        name: 'member.productDetail',
+        meta: {
+          requiresAuth: true,
+          title: 'Product Detail',
+          roles: ['user'],
+        }
+      },
+      {
+        path: 'cart',
+        component: MemberCart,
+        name: 'member.cart',
+        meta: {
+          requiresAuth: true,
+          title: 'Member cart',
+          roles: ['user'],
+        }
+      },
+      {
+        path: 'order',
+        component: MemberOrder,
+        name: 'member.order',
+        meta: {
+          requiresAuth: true,
+          title: 'Member Order',
+          roles: ['user'],
+        }
+      },
+      {
+        path: 'order/:id',
+        component: MemberOrderDetail,
+        name: 'member.orderDetail', 
+        meta: {
+          requiresAuth: true,
+          title: 'Order Detail',
+          roles: ['user'],
+        }
+      },
     ]
   },
   {
     path: '/admin',
-    component: Admin,
+    component: AdminLayout,
     children: [
       {
         path: 'dashboard',
@@ -62,34 +116,48 @@ const routes = [
         name: 'admin.dashboard',
         meta: {
           requiresAuth: true,
-          title: 'Admin Dashboard'
+          title: 'Admin Dashboard',
+          roles: ['admin'],
         }
       },
       {
         path: 'category',
-        component: Category,
+        component: AdminCategory,
         name: 'admin.category',
         meta: {
           requiresAuth: true,
-          title: 'Admin Category'
+          title: 'Admin Category',
+          roles: ['admin'],
         }
       },
       {
         path: 'product',
-        component: Product,
+        component: AdminProduct,
         name: 'admin.product',
         meta: {
           requiresAuth: true,
-          title: 'Admin Product'
+          title: 'Admin Product',
+          roles: ['admin'],
         }
       },
       {
         path: 'order',
-        component: Order,
+        component: AdminOrder,
         name: 'admin.order',
         meta: {
           requiresAuth: true,
-          title: 'Admin order'
+          title: 'Admin order',
+          roles: ['admin'],
+        }
+      },
+      {
+        path: 'order/:id',
+        component: AdminOrderDetail,
+        name: 'admin.orderDetail',
+        meta: {
+          requiresAuth: true,
+          title: 'Admin order',
+          roles: ['admin'],
         }
       },
     ]
@@ -103,31 +171,39 @@ const router = createRouter({
 
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore();
-  const {isAuthenticated} = authStore;
-  if (to.meta.requiresAuth && !isAuthenticated) {
+  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     if (authStore.token) {
       try {
         await authStore.getMe();
-        if (authStore.user) {
-          if(authStore.user.role==='admin'){
-            next({name: 'admin.dashboard'});
-          }else{
-            next({name: 'member.dashboard'});
-          }
-        }
         next();
       } catch (error) {
-        next({name: 'auth.login'});
-        throw error;
+        next({ name: 'auth.login' });
+        return;
       }
     } else {
-      next({name: 'auth.login'});
+      next({ name: 'auth.login' });
     }
-  } else if (to.meta.requiresUnauth && authStore.token) {
-    next({name: 'member.dashboard'});
+  } else if (to.meta.requiresUnauth && !!authStore.token) {
+    if(!authStore.isAuthenticated){
+      try{
+        await authStore.getMe();
+      }catch(error) {
+        return next();
+      }
+    }
+    if (authStore.isAdmin) {
+      next({name: 'admin.dashboard'});
+      return;
+    } else if (authStore.isUser) {
+      next({name: 'member.dashboard'});
+      return;
+    } else {
+      next({ name: 'auth.login' });
+      return;
+    }
   } else {
     next();
   }
-})
+});
 
 export default router;

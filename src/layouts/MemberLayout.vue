@@ -1,7 +1,9 @@
 <template>
   <Topbar />
 
-  <h1>Member Dashboard</h1>
+  <main class="py-15 px-8 min-h-screen">
+    <RouterView />    
+  </main>
 </template>
 
 <script setup lang="ts">

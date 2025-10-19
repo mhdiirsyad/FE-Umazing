@@ -1,25 +1,29 @@
 import { defineStore } from "pinia";
 import instance from "../lib/axios";
 import Cookies from "js-cookie";
+import type { ProductForm } from "../types/type";
 import axios from "axios";
 
-
-type Category = {
-  id: number;
-  name: string;
+type Product = {
+  id: number,
+  name: string,
+  price: number,
+  stock: number,
+  description: string,
+  image?: File,
+  is_active: string,
+  category_id: number,
 }
 
-interface FormCategory {
-  name: string | undefined;
-}
-
-export const useCategoryStore = defineStore("category", {
+export const useProductStore = defineStore('product', {
   state: () => {
     return {
-      categories: [] as Category[],
-      editingCategory: null as Category | null,
+      products: [] as Product[],
+      selectedProduct: null as Product | null,
+      keyWord: '' as String,
+      category: null as Number | null,
       loading: false,
-      errors: null as Record<string, string[]> | string | null,
+      errors: null as Record<string, string[]> | string | null
     }
   },
 
@@ -28,15 +32,25 @@ export const useCategoryStore = defineStore("category", {
   },
 
   actions: {
-    async getAllCategories(keyWord: string = '') {
+    async getProducts(keyWord: string = '', category: Number | null = null) {
       this.loading = true;
       this.errors = null;
+      const urlParams = new URLSearchParams();
+
+      if(keyWord) {
+        urlParams.append('search', keyWord)
+      }
+
+      if(category) {
+        urlParams.append('category', category.toString())
+      }
+
+      const queryString = urlParams.toString();
+      const url = `/api/product${queryString ? `?${queryString}` : ''}`;
       try {
-        const url = keyWord
-          ? `api/category?search=${encodeURIComponent(keyWord)}`
-          : `api/category`;
         const res = await instance.get(url);
-        this.categories = res.data.data;
+        const { data } = res
+        this.products = data.data;
       } catch (error) {
         if (axios.isAxiosError(error) && error.response) {
           const status = error.response.status;
@@ -55,13 +69,59 @@ export const useCategoryStore = defineStore("category", {
       }
     },
 
-    async addCategory(payload: FormCategory) {
+    async setKeyword(key: string) {
+      this.keyWord = key;
+
+      await this.getProducts(key);
+    },
+
+    async getProduct(id: number) {
       this.loading = true;
       this.errors = null;
 
       try {
-        await instance.post('/api/category', payload);
-        this.getAllCategories();
+        const res = await instance.get(`/api/product/${id}`);
+        const { data } = res
+        console.log(data.data);
+        this.selectedProduct = data.data;
+      } catch (error) {
+        if (axios.isAxiosError(error) && error.response) {
+          const status = error.response.status;
+          const data = error.response.data;
+
+          if (status === 500) {
+            this.errors = data.message || `Error ${status} : Failed connect to server`;
+            throw new Error(this.errors as string);
+          }
+        } else {
+          this.errors = 'Error occured'
+          throw error;
+        }
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async addProduct(payload: ProductForm) {
+      this.loading = true;
+      this.errors = null;
+
+      const formData = new FormData();
+      formData.append('name', payload.name);
+      formData.append('price', payload.price.toString());
+      formData.append('stock', payload.stock.toString());
+      formData.append('description', payload.description);
+      formData.append('is_active', payload.is_active === '1' ? '1' : '0');
+      formData.append('category_id', payload.category_id.toString());
+
+      if(payload.image) {
+        formData.append('image', payload.image, payload.image.name);
+      }
+
+      try {
+        const res = await instance.post('/api/product', formData);
+        await this.getProducts();
+        console.log(res.data.data);
       } catch (error) {
         if (axios.isAxiosError(error) && error.response) {
           const status = error.response.status;
@@ -82,42 +142,29 @@ export const useCategoryStore = defineStore("category", {
           throw error;
         }
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
 
-    async getCategory(id: number) {
+    async updateProduct(id: number, payload: ProductForm) {
       this.loading = true;
       this.errors = null;
 
-      try {
-        const res = await instance.get(`/api/category/${id}`);
-        this.editingCategory = res.data.data;
-      } catch (error) {
-        if (axios.isAxiosError(error) && error.response) {
-          const status = error.response.status;
-          const data = error.response.data;
+      const formData = new FormData();
+      formData.append('_method', 'PUT');
+      formData.append('name', payload.name);
+      formData.append('price', payload.price.toString());
+      formData.append('stock', payload.stock.toString());
+      formData.append('description', payload.description);
+      formData.append('is_active', payload.is_active === '1' ? '1' : '0');
+      formData.append('category_id', payload.category_id.toString());
 
-          if (status === 500) {
-            this.errors = data.message || `Error ${status} : Failed connect to server`;
-            throw new Error(this.errors as string);
-          }
-        } else {
-          this.errors = 'Error occured'
-          throw error;
-        }
-      } finally {
-        this.loading = false
+      if(payload.image instanceof File) {
+        formData.append('image', payload.image, payload.image.name);
       }
-    },
-
-    async updateCategory(id: number | undefined, payload: FormCategory) {
-      this.loading = true;
-      this.errors = null;
 
       try {
-        await instance.put(`/api/category/${id}`, payload);
-        await this.getAllCategories();
+        await instance.post(`/api/product/${id}`, formData);
       } catch (error) {
         if (axios.isAxiosError(error) && error.response) {
           const status = error.response.status;
@@ -138,17 +185,17 @@ export const useCategoryStore = defineStore("category", {
           throw error;
         }
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
 
-    async deleteCategory(id: number | undefined) {
+    async deleteProduct(id: number) {
       this.loading = true;
       this.errors = null;
 
       try {
-        await instance.delete(`/api/category/${id}`);
-        await this.getAllCategories();
+        await instance.delete(`/api/product/${id}`);
+        await this.getProducts();
       } catch (error) {
         if (axios.isAxiosError(error) && error.response) {
           const status = error.response.status;
@@ -163,7 +210,7 @@ export const useCategoryStore = defineStore("category", {
           throw error;
         }
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
   }

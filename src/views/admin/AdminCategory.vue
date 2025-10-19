@@ -2,7 +2,6 @@
   <div>
     <h1 class="text-xl uppercase font-bold my-2">Manage Categories</h1>
     <div class="flex flex-col-reverse gap-2 items-start lg:justify-between lg:flex-row py-4">
-
       <form class="max-w-md">
         <label for="default-search" class="mb-2 text-sm font-medium text-gray-900 sr-only">Search</label>
         <div class="relative">
@@ -15,7 +14,7 @@
           </div>
           <input type="search" id="default-search" v-model="keyWord" @input="handleSearch"
             class="block w-full p-2 ps-10 text-sm text-gray-900 border border-gray-300 rounded-xl bg-gray-50 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="Search Mockups, Logos..." required />
+            placeholder="Search Category" required />
         </div>
       </form>
 
@@ -56,24 +55,37 @@
                 <label for="name" class="block mb-2 text-sm font-medium text-gray-900">Name</label>
                 <input type="text" name="name" id="name" v-model="form.name"
                   class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5"
-                  placeholder="Type product name" required>
+                  placeholder="Type Category name" required>
               </div>
             </div>
-            <button type="submit"
+            <button type="submit" :disabled="loading"
               class="text-white inline-flex items-center bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center">
-              <svg class="me-1 -ms-1 w-5 h-5" fill="currentColor" viewBox="0 0 20 20"
-                xmlns="http://www.w3.org/2000/svg">
-                <path fill-rule="evenodd"
-                  d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
-                  clip-rule="evenodd"></path>
-              </svg>
-              {{ modalTitle }}
+              <Spinner :loading="loading" :size="'h-4'" class="flex">
+                <span>Loading...</span>
+              </Spinner>
+              <div v-if="!loading" class="flex">
+                <svg class="me-1 -ms-1 w-5 h-5" fill="currentColor" viewBox="0 0 20 20"
+                  xmlns="http://www.w3.org/2000/svg">
+                  <path fill-rule="evenodd"
+                    d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+                    clip-rule="evenodd"></path>
+                </svg>
+                <span>{{ modalTitle }}</span>
+              </div>
             </button>
           </form>
         </div>
       </div>
     </div>
   </div>
+
+  <Toaster 
+  ref="toastRef"
+  :message="toastMessage"
+  :status="toastStatus"
+  :duration="3000"
+  />
+
   <div class="shadow-md sm:rounded-lg w-full">
     <table class="text-sm w-full text-left rtl:text-right text-gray-500">
       <thead class="text-xs text-gray-700 uppercase bg-gray-50">
@@ -90,7 +102,7 @@
           </th>
         </tr>
       </thead>
-      <tbody>
+      <tbody v-if="!loading">
         <tr v-for="category in categories" class="bg-white border-b border-gray-200 hover:bg-gray-50">
           <td class="px-6 py-4 font-semibold">
             #{{ category.id }}
@@ -113,6 +125,9 @@
         </tr>
       </tbody>
     </table>
+    <Spinner :loading="loading" class="flex justify-center py-2">
+      <span>Loading Categories</span>
+    </Spinner>
   </div>
 </template>
 
@@ -122,10 +137,17 @@ import { useCategoryStore } from '../../store/category';
 import { storeToRefs } from 'pinia';
 import { initFlowbite, Modal } from 'flowbite';
 import type { CategoryForm } from '../../types/type';
+import Spinner from '../../components/Spinner.vue';
+import Toaster from '../../components/Toaster.vue';
 
 const useCategory = useCategoryStore();
 const { getAllCategories, addCategory, updateCategory, getCategory, deleteCategory } = useCategory;
-const { categories, editingCategory } = storeToRefs(useCategory);
+const { categories, editingCategory, loading } = storeToRefs(useCategory);
+
+const toastRef = ref<typeof Toaster | null>(null);
+const toastMessage = ref('');
+const toastStatus = ref<'success' | 'failed'>('success');
+
 
 const form = reactive<CategoryForm>({
   name: '',
@@ -183,17 +205,24 @@ const handleSubmit = async (e: Event) => {
   try {
     if (isEditing.value && editingCategory.value) {
       await updateCategory(editingCategory.value.id, form);
+      toastMessage.value = `Success Edit Category ${form.name}`;
+      toastStatus.value = 'success';
     } else {
-      await addCategory(form)
+      await addCategory(form);
+      toastMessage.value = `Success add Category ${form.name}`;
+      toastStatus.value = 'success';
     }
 
     if (modalInstance) {
       modalInstance.hide();
     }
-
+    form.name = '';
     editingCategory.value = null;
   } catch (error) {
-    console.error(error);
+    toastMessage.value = `Error: ${error}`;
+    toastStatus.value = 'failed';
+  } finally {
+    toastRef.value?.showToast()
   }
 }
 

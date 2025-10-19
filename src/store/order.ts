@@ -1,25 +1,17 @@
 import { defineStore } from "pinia";
 import instance from "../lib/axios";
 import Cookies from "js-cookie";
+import type { Order, OrderForm, UpdateOrderPayload } from "../types/type";
 import axios from "axios";
 
-
-type Category = {
-  id: number;
-  name: string;
-}
-
-interface FormCategory {
-  name: string | undefined;
-}
-
-export const useCategoryStore = defineStore("category", {
+export const useOrderStore = defineStore('order', {
   state: () => {
     return {
-      categories: [] as Category[],
-      editingCategory: null as Category | null,
+      orders: [] as Order[],
+      selectedOrder: null as Order | null,
       loading: false,
       errors: null as Record<string, string[]> | string | null,
+      flashMessage: { message: '', status: '' } as { message: string, status: string }
     }
   },
 
@@ -28,15 +20,17 @@ export const useCategoryStore = defineStore("category", {
   },
 
   actions: {
-    async getAllCategories(keyWord: string = '') {
+    async getOrders(keyWord: string = '') {
       this.loading = true;
       this.errors = null;
+
       try {
-        const url = keyWord
-          ? `api/category?search=${encodeURIComponent(keyWord)}`
-          : `api/category`;
+        const url = keyWord ? `/api/orders?search=${encodeURIComponent(keyWord)}`
+          : '/api/orders';
+
         const res = await instance.get(url);
-        this.categories = res.data.data;
+        this.orders = res.data.data;
+        console.log(res.data.data);
       } catch (error) {
         if (axios.isAxiosError(error) && error.response) {
           const status = error.response.status;
@@ -55,13 +49,46 @@ export const useCategoryStore = defineStore("category", {
       }
     },
 
-    async addCategory(payload: FormCategory) {
+    async getOrder(orderId: number) {
       this.loading = true;
       this.errors = null;
 
       try {
-        await instance.post('/api/category', payload);
-        this.getAllCategories();
+        const res = await instance.get(`/api/order/${orderId}`);
+        this.selectedOrder = res.data.data;
+        console.log(res.data.data);
+      } catch (error) {
+        if (axios.isAxiosError(error) && error.response) {
+          const status = error.response.status;
+          const data = error.response.data;
+
+          if (status === 404) {
+            this.errors = data.message;
+            throw new Error(this.errors as string);
+          } else if (status === 500) {
+            this.errors = data.message || `Error ${status} : Failed connect to server`;
+            throw new Error(this.errors as string);
+          }
+        } else {
+          this.errors = 'Error occured'
+          throw error;
+        }
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async addOrder(payload: OrderForm) {
+      this.loading = true;
+      this.errors = null;
+
+      try {
+        const res = await instance.post('/api/order', payload);
+        const newOrder: Order = res.data.data;
+        console.log(newOrder);
+
+        this.flashMessage = { message: 'Order successfully made', status: 'success' }
+        return newOrder;
       } catch (error) {
         if (axios.isAxiosError(error) && error.response) {
           const status = error.response.status;
@@ -81,52 +108,26 @@ export const useCategoryStore = defineStore("category", {
           this.errors = 'Error occured'
           throw error;
         }
+        this.flashMessage = { message: 'Order failed', status: 'failed' }
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
 
-    async getCategory(id: number) {
+    async updateOrder(orderId: number, payload: UpdateOrderPayload) {
       this.loading = true;
       this.errors = null;
 
       try {
-        const res = await instance.get(`/api/category/${id}`);
-        this.editingCategory = res.data.data;
+        const res = await instance.patch(`/api/order/${orderId}`, payload);
+        await this.getOrder(orderId)
+        console.log(res.data.data);
       } catch (error) {
         if (axios.isAxiosError(error) && error.response) {
           const status = error.response.status;
           const data = error.response.data;
 
-          if (status === 500) {
-            this.errors = data.message || `Error ${status} : Failed connect to server`;
-            throw new Error(this.errors as string);
-          }
-        } else {
-          this.errors = 'Error occured'
-          throw error;
-        }
-      } finally {
-        this.loading = false
-      }
-    },
-
-    async updateCategory(id: number | undefined, payload: FormCategory) {
-      this.loading = true;
-      this.errors = null;
-
-      try {
-        await instance.put(`/api/category/${id}`, payload);
-        await this.getAllCategories();
-      } catch (error) {
-        if (axios.isAxiosError(error) && error.response) {
-          const status = error.response.status;
-          const data = error.response.data;
-
-          if (status === 422) {
-            this.errors = data.errors;
-            throw new Error('Validation Error');
-          } else if (status === 400) {
+          if (status === 400) {
             this.errors = data.message;
             throw new Error(this.errors as string);
           } else if (status === 500) {
@@ -138,33 +139,12 @@ export const useCategoryStore = defineStore("category", {
           throw error;
         }
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
 
-    async deleteCategory(id: number | undefined) {
-      this.loading = true;
-      this.errors = null;
-
-      try {
-        await instance.delete(`/api/category/${id}`);
-        await this.getAllCategories();
-      } catch (error) {
-        if (axios.isAxiosError(error) && error.response) {
-          const status = error.response.status;
-          const data = error.response.data;
-
-          if (status === 500) {
-            this.errors = data.message || `Error ${status} : Failed connect to server`;
-            throw new Error(this.errors as string);
-          }
-        } else {
-          this.errors = 'Error occured'
-          throw error;
-        }
-      } finally {
-        this.loading = false
-      }
+    clearFlashMessage() {
+      this.flashMessage = { message: '', status: '' }
     },
   }
 })

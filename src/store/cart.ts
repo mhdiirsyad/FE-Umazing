@@ -1,42 +1,31 @@
 import { defineStore } from "pinia";
 import instance from "../lib/axios";
 import Cookies from "js-cookie";
+import type { Cart, CartForm } from "../types/type";
 import axios from "axios";
 
-
-type Category = {
-  id: number;
-  name: string;
-}
-
-interface FormCategory {
-  name: string | undefined;
-}
-
-export const useCategoryStore = defineStore("category", {
-  state: () => {
+export const useCartStore = defineStore('cart', {
+  state() {
     return {
-      categories: [] as Category[],
-      editingCategory: null as Category | null,
+      cart: null as Cart | null,
       loading: false,
       errors: null as Record<string, string[]> | string | null,
+      flashMessage: {message: '', status: ''} as {message: string, status: string}
     }
   },
-
   getters: {
-    token: () => Cookies.get('auth_token'),
+    token: () => Cookies.get('auth-token'),
+    cartTotal(state): number {
+      return state.cart?.cart_items.reduce((total, item) => total + (item.product_price * item.quantity), 0) || 0;
+    }
   },
-
   actions: {
-    async getAllCategories(keyWord: string = '') {
+    async getCart() {
       this.loading = true;
       this.errors = null;
       try {
-        const url = keyWord
-          ? `api/category?search=${encodeURIComponent(keyWord)}`
-          : `api/category`;
-        const res = await instance.get(url);
-        this.categories = res.data.data;
+        const res = await instance.get('/api/cart');
+        this.cart = res.data.data;
       } catch (error) {
         if (axios.isAxiosError(error) && error.response) {
           const status = error.response.status;
@@ -55,13 +44,46 @@ export const useCategoryStore = defineStore("category", {
       }
     },
 
-    async addCategory(payload: FormCategory) {
+    async addItem(payload: CartForm) {
       this.loading = true;
       this.errors = null;
-
       try {
-        await instance.post('/api/category', payload);
-        this.getAllCategories();
+        await instance.post('/api/cart', payload);
+        this.flashMessage = {message: 'Success Add', status: 'success'}
+      } catch (error) {
+       if (axios.isAxiosError(error) && error.response) {
+          const status = error.response.status;
+          const data = error.response.data;
+
+          if (status === 422) {
+            this.errors = data.errors;
+            throw new Error('Validation Error');
+          } else if (status === 400) {
+            this.errors = data.message;
+            throw new Error(this.errors as string);
+          } else if (status === 500) {
+            this.errors = data.message || `Error ${status} : Failed connect to server`;
+            throw new Error(this.errors as string);
+          }
+        } else {
+          this.errors = 'Error occured'
+          throw error;
+        }
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async updateQuantity(itemId: number, quantity: number) {
+      this.loading = true;
+      this.errors = null;
+      const payload = {
+        quantity: quantity,
+        _methode: 'PUT'
+      }
+      try {
+        const res = await instance.put(`/api/cart/items/${itemId}`, payload);
+        console.log(res.data.data)
       } catch (error) {
         if (axios.isAxiosError(error) && error.response) {
           const status = error.response.status;
@@ -86,13 +108,13 @@ export const useCategoryStore = defineStore("category", {
       }
     },
 
-    async getCategory(id: number) {
+    async removeItem(itemId: number) {
       this.loading = true;
       this.errors = null;
 
       try {
-        const res = await instance.get(`/api/category/${id}`);
-        this.editingCategory = res.data.data;
+        const res = await instance.delete(`/api/cart/items/${itemId}`);
+        console.log(res.data.message);
       } catch (error) {
         if (axios.isAxiosError(error) && error.response) {
           const status = error.response.status;
@@ -107,64 +129,8 @@ export const useCategoryStore = defineStore("category", {
           throw error;
         }
       } finally {
-        this.loading = false
+        this.loading = false;
       }
-    },
-
-    async updateCategory(id: number | undefined, payload: FormCategory) {
-      this.loading = true;
-      this.errors = null;
-
-      try {
-        await instance.put(`/api/category/${id}`, payload);
-        await this.getAllCategories();
-      } catch (error) {
-        if (axios.isAxiosError(error) && error.response) {
-          const status = error.response.status;
-          const data = error.response.data;
-
-          if (status === 422) {
-            this.errors = data.errors;
-            throw new Error('Validation Error');
-          } else if (status === 400) {
-            this.errors = data.message;
-            throw new Error(this.errors as string);
-          } else if (status === 500) {
-            this.errors = data.message || `Error ${status} : Failed connect to server`;
-            throw new Error(this.errors as string);
-          }
-        } else {
-          this.errors = 'Error occured'
-          throw error;
-        }
-      } finally {
-        this.loading = false
-      }
-    },
-
-    async deleteCategory(id: number | undefined) {
-      this.loading = true;
-      this.errors = null;
-
-      try {
-        await instance.delete(`/api/category/${id}`);
-        await this.getAllCategories();
-      } catch (error) {
-        if (axios.isAxiosError(error) && error.response) {
-          const status = error.response.status;
-          const data = error.response.data;
-
-          if (status === 500) {
-            this.errors = data.message || `Error ${status} : Failed connect to server`;
-            throw new Error(this.errors as string);
-          }
-        } else {
-          this.errors = 'Error occured'
-          throw error;
-        }
-      } finally {
-        this.loading = false
-      }
-    },
+    }
   }
 })
